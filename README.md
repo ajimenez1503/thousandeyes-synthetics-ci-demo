@@ -1,21 +1,50 @@
 # ThousandEyes synthetic CI demo
 
-The [CI workflow](.github/workflows/ci.yml) runs real ThousandEyes HTTP and TCP instant tests using the [ThousandEyes Action](https://github.com/ajimenez1503/thousandeyes-synthetics-ci-github-action). A failed assertion or incomplete result fails the job. JSON and JUnit reports are saved as workflow artifacts.
+Run the same real ThousandEyes HTTP and TCP checks from your CI pipeline, deployment controller, or terminal. Every example uses [`thousandeyes-ci.json`](thousandeyes-ci.json) and the shared [`thousandeyes synthetics run-tests` CLI](https://github.com/ajimenez1503/thousandeyes-cli#synthetic-checks-for-ci-and-progressive-delivery).
 
-## Run
+| Platform | Example | Setup |
+| --- | --- | --- |
+| GitHub Actions | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | [Run below](#github-actions). |
+| Jenkins | [`Jenkinsfile`](Jenkinsfile) | [Jenkins instructions](examples/jenkins/README.md). |
+| GitLab CI | [`.gitlab-ci.yml`](.gitlab-ci.yml) | [GitLab instructions](examples/gitlab/README.md). |
+| Developer terminal | [CLI commands](examples/terminal/README.md) | Install the CLI and `jq`. |
+| Argo CD | [PostSync Job](examples/argocd/post-sync-job.yaml) | [Argo CD instructions](examples/argocd/README.md). |
+| Argo Rollouts | [AnalysisTemplate](examples/argo-rollouts/analysis-template.yaml) and [rollout step](examples/argo-rollouts/rollout-step.yaml) | [Rollouts instructions](examples/argo-rollouts/README.md). |
+
+The Action is the GitHub wrapper. The other platforms invoke the shared CLI directly or through its container. This repository contains configuration examples and setup instructions, with no helper scripts, npm packages, or unit-test scaffolding.
+
+## Shared settings
+
+Provide these values in each platform's secret or variable settings:
+
+| Setting | Purpose |
+| --- | --- |
+| `TE_TOKEN` | ThousandEyes API token; store as a secret. |
+| `TE_ACCOUNT_GROUP_ID` | Account group in which to create instant tests. |
+| `TE_AGENT_IDS` | Comma-separated numeric agent IDs, without spaces. |
+
+Tokens and account settings are not included in source. Each example fills the suite's empty agent lists at runtime. The CLI validates the resulting configuration before submitting tests.
+
+Edit `thousandeyes-ci.json` to change targets and thresholds. The HTTP example expects `401` from an unauthenticated public API request. The TCP example checks port 443. Both use real measurements from the selected Cloud or Enterprise Agents.
+
+Each execution creates instant tests and consumes applicable ThousandEyes units. The examples use manual CI execution. Argo examples run when their sync or rollout reaches the configured hook or analysis step. Agents must reach the target; running a Job inside Kubernetes does not give remote agents access to a private Service. Use connected Enterprise Agents for private targets and a private repository for private configuration or reports.
+
+## GitHub Actions
+
+This repository already has its GitHub secret and account variables configured.
 
 1. Open **Actions > ThousandEyes checks > Run workflow**.
 2. Choose `main` and select **Run workflow**.
-3. Inspect the job summary and download the reports.
+3. Inspect the job summary and download **thousandeyes-results**.
 
-This repository already has the `TE_TOKEN` secret and the `TE_ACCOUNT_GROUP_ID` and `TE_AGENT_IDS` variables configured. In your own repository, configure those settings first. `TE_AGENT_IDS` is a comma-separated list of numeric agent IDs.
+The Action installs the pinned CLI automatically. The workflow preserves its exit status and uploads JSON/JUnit reports even when checks fail.
 
-## Test configuration
+## CLI installation
 
-Edit [`thousandeyes-ci.json`](thousandeyes-ci.json) to change the target and thresholds. CI fills the empty agent lists from `TE_AGENT_IDS` and passes the account group to the Action. Account settings and the token stay out of source files.
+The terminal, Jenkins, and GitLab examples require the `thousandeyes` executable and `jq` on a Bash-compatible Linux/macOS host. GitLab's example assumes a provisioned Linux shell runner. If you use a container executor, its runner image must contain both tools.
 
-The HTTP check expects `401` because the example calls a public API without application credentials. The TCP check validates connectivity to port 443. Both checks run from your selected ThousandEyes agents.
+Install the matching OS/architecture archive from the pinned [CLI `0.0.1-next` release](https://github.com/ajimenez1503/thousandeyes-cli/releases/tag/0.0.1-next), verify it against the release checksum manifest, and place the executable on `PATH`. The GitHub Action performs its own verified installation. Kubernetes uses a CLI image that you build and publish as described in [Kubernetes setup](examples/kubernetes/README.md).
 
-The Action handles CLI installation, test creation, result polling, evaluation, and the CI exit code. This consumer demo needs no application code, helper scripts, npm packages, or unit tests.
+## Validation
 
-The workflow is manually triggered. Each run creates instant tests and consumes applicable ThousandEyes units. Agents must be able to reach the configured target. Use a private repository for private targets or reports.
+Real ThousandEyes execution has been verified from GitHub Actions and a developer terminal. The added examples were reviewed, and their YAML, embedded shell syntax, and suite rendering were checked locally. They have not been executed in your Jenkins, GitLab, or Argo CD environment. Live ThousandEyes execution through Argo Rollouts also remains to verify.

@@ -1,0 +1,70 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: thousandeyes-synthetics
+spec:
+  args:
+    - name: image
+    - name: suite-config-map
+      value: thousandeyes-suite
+    - name: token-secret
+      value: thousandeyes-api
+  metrics:
+    - name: synthetic-checks
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 360
+            template:
+              spec:
+                restartPolicy: Never
+                automountServiceAccountToken: false
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 65532
+                  runAsGroup: 65532
+                  fsGroup: 65532
+                containers:
+                  - name: synthetics
+                    image: "{{args.image}}"
+                    args:
+                      - synthetics
+                      - run-tests
+                      - --config
+                      - /config/thousandeyes-ci.json
+                      - --timeout
+                      - 5m
+                      - --json
+                    env:
+                      - name: TE_TOKEN
+                        valueFrom:
+                          secretKeyRef:
+                            name: "{{args.token-secret}}"
+                            key: TE_TOKEN
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 64Mi
+                      limits:
+                        memory: 128Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                      seccompProfile:
+                        type: RuntimeDefault
+                    volumeMounts:
+                      - name: config
+                        mountPath: /config
+                        readOnly: true
+                volumes:
+                  - name: config
+                    configMap:
+                      name: "{{args.suite-config-map}}"
+                      items:
+                        - key: thousandeyes-ci.json
+                          path: thousandeyes-ci.json

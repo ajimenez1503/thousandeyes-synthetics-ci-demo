@@ -1,0 +1,8 @@
+# Add this entry to spec.strategy.canary.steps after candidate readiness.
+# Set the suite targets to the candidate endpoint before running the analysis.
+- analysis:
+    templates:
+      - templateName: thousandeyes-synthetics
+    args:
+      - name: image
+        value: your-registry/thousandeyes-cli:0.0.1-next

@@ -1,0 +1,29 @@
+stages:
+  - test
+
+thousandeyes:
+  stage: test
+  timeout: 10m
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+  allow_failure: false
+  script:
+    - |
+      set +x
+      set -eu
+      mkdir -p reports
+      rm -f reports/results.json reports/results.xml
+      jq --arg aid "$TE_ACCOUNT_GROUP_ID" --arg ids "$TE_AGENT_IDS" \
+        '.accountGroupId = $aid | .tests[].config.agents = ($ids | split(",") | map({agentId: .}))' \
+        thousandeyes-ci.json > reports/thousandeyes-ci.json
+      thousandeyes synthetics run-tests \
+        --config reports/thousandeyes-ci.json \
+        --json-report reports/results.json \
+        --junit-report reports/results.xml
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - reports/results.json
+      - reports/results.xml
