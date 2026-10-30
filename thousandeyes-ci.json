@@ -9,11 +9,17 @@
       "config": {
         "url": "https://api.thousandeyes.com/v7/stream",
         "desiredStatusCode": "401",
-        "agents": [],
+        "agents": [
+          {
+            "agentId": "66"
+          }
+        ],
         "networkMeasurements": false
       },
       "thresholds": {
-        "expectedResponseCodes": [401],
+        "expectedResponseCodes": [
+          401
+        ],
         "maxResponseTime": 2000,
         "maxTotalTime": 3000
       }
@@ -25,7 +31,11 @@
         "server": "api.thousandeyes.com",
         "port": 443,
         "protocol": "tcp",
-        "agents": []
+        "agents": [
+          {
+            "agentId": "66"
+          }
+        ]
       },
       "thresholds": {
         "maxLoss": 0,

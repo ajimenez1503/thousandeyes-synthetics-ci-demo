@@ -13,26 +13,19 @@ docker build --platform linux/amd64 -t "$TE_CLI_IMAGE" \
 docker push "$TE_CLI_IMAGE"
 ```
 
-Use `linux/arm64` for arm64 nodes, or publish a multi-platform image. Replace `your-registry/thousandeyes-cli:0.0.1-next` in the Argo example with your image, preferably pinned by digest. Configure image-pull authentication if your registry requires it. The CLI image has no shell or `jq`; render the suite before mounting it.
+Use `linux/arm64` for arm64 nodes, or publish a multi-platform image. Replace `your-registry/thousandeyes-cli:0.0.1-next` in the Argo example with your image, preferably pinned by digest. Configure image-pull authentication if your registry requires it. The CLI reads the mounted suite directly and needs no shell or configuration-rendering tools.
 
 ## Prepare the suite and token
 
-From the repository root, load `TE_TOKEN` into your terminal environment without putting it in command history. Set your account settings and an existing namespace:
+From the repository root, load `TE_TOKEN` into your terminal environment without putting it in command history. The agents are configured directly in `thousandeyes-ci.json`. Set your account group and an existing namespace:
 
 ```sh
 export TE_NAMESPACE='<demo-namespace>'
 export TE_ACCOUNT_GROUP_ID='<account-group-id>'
-export TE_AGENT_IDS='<agent-id>,<another-agent-id>'
-
-TE_SUITE_FILE="$(mktemp)"
-jq --arg aid "$TE_ACCOUNT_GROUP_ID" --arg ids "$TE_AGENT_IDS" \
-  '.accountGroupId = $aid | .tests[].config.agents = ($ids | split(",") | map({agentId: .}))' \
-  thousandeyes-ci.json > "$TE_SUITE_FILE"
-
 kubectl -n "$TE_NAMESPACE" create configmap thousandeyes-suite \
-  --from-file=thousandeyes-ci.json="$TE_SUITE_FILE" \
+  --from-file=thousandeyes-ci.json=thousandeyes-ci.json \
+  --from-literal=account-group-id="$TE_ACCOUNT_GROUP_ID" \
   --dry-run=client -o yaml | kubectl apply -f -
-rm -f "$TE_SUITE_FILE"
 
 set +x
 printf 'TE_TOKEN=%s\n' "$TE_TOKEN" | \
@@ -40,7 +33,7 @@ printf 'TE_TOKEN=%s\n' "$TE_TOKEN" | \
   --from-env-file=/dev/stdin --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-The Secret has a `TE_TOKEN` key, which both Job examples reference. Keep shell tracing disabled when handling the token. For a GitOps deployment, deliver the ConfigMap and Secret through your normal configuration and secret-management mechanism; do not commit the generated Secret YAML.
+The ConfigMap contains the suite and an `account-group-id` key. Each Job reads the account group from that key and passes it through the CLI's `--account-group-id` override. The Secret has a `TE_TOKEN` key, which both Job examples reference. Keep shell tracing disabled when handling the token. For a GitOps deployment, deliver the ConfigMap and Secret through your normal configuration and secret-management mechanism; do not commit the generated Secret YAML.
 
 Both resources must exist in the namespace where the Job runs. The Jobs read the suite from `/config/thousandeyes-ci.json`, send the token through the environment, print sanitized JSON to their logs, and use the CLI exit code for success or failure. They use a five-minute CLI timeout, a six-minute Job deadline, and no retries.
 

@@ -35,6 +35,8 @@ spec:
                       - run-tests
                       - --config
                       - /config/thousandeyes-ci.json
+                      - --account-group-id
+                      - "$(TE_ACCOUNT_GROUP_ID)"
                       - --timeout
                       - 5m
                       - --json
@@ -44,6 +46,11 @@ spec:
                           secretKeyRef:
                             name: "{{args.token-secret}}"
                             key: TE_TOKEN
+                      - name: TE_ACCOUNT_GROUP_ID
+                        valueFrom:
+                          configMapKeyRef:
+                            name: "{{args.suite-config-map}}"
+                            key: account-group-id
                     resources:
                       requests:
                         cpu: 50m

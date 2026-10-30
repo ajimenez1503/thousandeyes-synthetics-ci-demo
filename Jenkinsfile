@@ -8,7 +8,6 @@ pipeline {
 
     parameters {
         string(name: 'TE_ACCOUNT_GROUP_ID', defaultValue: '', description: 'ThousandEyes account group ID')
-        string(name: 'TE_AGENT_IDS', defaultValue: '', description: 'Comma-separated numeric agent IDs')
     }
 
     stages {
@@ -26,11 +25,9 @@ pipeline {
                         set +x
                         set -eu
                         mkdir -p reports
-                        jq --arg aid "$TE_ACCOUNT_GROUP_ID" --arg ids "$TE_AGENT_IDS" \
-                          '.accountGroupId = $aid | .tests[].config.agents = ($ids | split(",") | map({agentId: .}))' \
-                          thousandeyes-ci.json > reports/thousandeyes-ci.json
                         thousandeyes synthetics run-tests \
-                          --config reports/thousandeyes-ci.json \
+                          --config thousandeyes-ci.json \
+                          --account-group-id "$TE_ACCOUNT_GROUP_ID" \
                           --json-report reports/results.json \
                           --junit-report reports/results.xml
                     '''
