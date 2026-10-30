@@ -1,0 +1,37 @@
+name: ThousandEyes checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Configure agents
+        env:
+          TE_AGENT_IDS: ${{ vars.TE_AGENT_IDS }}
+        run: |
+          jq --arg ids "$TE_AGENT_IDS" \
+            '.tests[].config.agents = ($ids | split(",") | map({agentId: .}))' \
+            thousandeyes-ci.json > "$RUNNER_TEMP/thousandeyes-ci.json"
+      - name: Run ThousandEyes checks
+        id: synthetics
+        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
+        with:
+          api-token: ${{ secrets.TE_TOKEN }}
+          account-group-id: ${{ vars.TE_ACCOUNT_GROUP_ID }}
+          config-path: ${{ runner.temp }}/thousandeyes-ci.json
+      - name: Save reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: thousandeyes-results
+          path: |
+            ${{ steps.synthetics.outputs.json-report }}
+            ${{ steps.synthetics.outputs.junit-report }}
+          if-no-files-found: warn
+          retention-days: 7
