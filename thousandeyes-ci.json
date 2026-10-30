@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "timeout": "5m",
+  "pollInterval": "5s",
+  "tests": [
+    {
+      "name": "http-check",
+      "type": "http-server",
+      "config": {
+        "url": "https://api.thousandeyes.com/v7/stream",
+        "desiredStatusCode": "401",
+        "agents": [],
+        "networkMeasurements": false
+      },
+      "thresholds": {
+        "expectedResponseCodes": [401],
+        "maxResponseTime": 2000,
+        "maxTotalTime": 3000
+      }
+    },
+    {
+      "name": "tcp-check",
+      "type": "agent-to-server",
+      "config": {
+        "server": "api.thousandeyes.com",
+        "port": 443,
+        "protocol": "tcp",
+        "agents": []
+      },
+      "thresholds": {
+        "maxLoss": 0,
+        "maxLatency": 150,
+        "maxJitter": 50
+      }
+    }
+  ]
+}
