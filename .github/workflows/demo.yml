@@ -1,120 +1,42 @@
 name: ThousandEyes synthetic CI demo
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
     inputs:
-      mode:
-        description: Mock needs no secrets; live creates real instant tests
-        type: choice
-        options: [mock, live]
-        default: mock
       account-group-id:
-        description: Live only, ThousandEyes account group ID
+        description: Account group ID (blank uses the repository default)
         type: string
       agent-ids:
-        description: Live only, 1 to 5 agent IDs separated by commas
+        description: 1 to 5 comma-separated agent IDs (blank uses the repository default)
         type: string
       target-url:
-        description: Live only, HTTPS health endpoint expected to return 200
+        description: HTTPS target URL (blank uses the repository default)
+        type: string
+      expected-http-status:
+        description: Expected HTTP status (blank uses the repository default or 200)
         type: string
       network-host:
-        description: Live only, optional hostname or IP (defaults to URL hostname)
+        description: Optional DNS hostname or IP without a port (defaults to URL hostname)
         type: string
       network-port:
-        description: Live only, TCP port
+        description: TCP port (blank uses the repository default or 443)
         type: string
-        default: '443'
       api-base-url:
-        description: Live only, choose the API matching your token
+        description: Choose the ThousandEyes API matching your token
         type: choice
         options:
           - https://api.thousandeyes.com
           - https://api.stg.thousandeyes.com
         default: https://api.thousandeyes.com
       scenario:
-        description: Live only, failures expect HTTP 599 from your normal 200 endpoint
+        description: Select passing checks or a deliberately incorrect HTTP expectation
         type: choice
         options: [healthy, blocking-failure, non-blocking-failure]
         default: healthy
 permissions:
   contents: read
 jobs:
-  mock:
-    name: Mock API demo (no ThousandEyes account)
-    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'mock'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: '24'
-      - name: Validate demo helpers
-        run: npm test
-      - name: Start loopback mock API and generate two-agent suites
-        id: mock
-        run: node scripts/start-mock.js
-      - name: Passing HTTP and network checks
-        id: healthy
-        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
-        with:
-          api-token: demo-fake-token
-          config-path: .demo/healthy.json
-          api-base-url: ${{ steps.mock.outputs.api-base-url }}
-      - name: Blocking HTTP failure (expected failed step)
-        id: blocking
-        continue-on-error: true
-        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
-        with:
-          api-token: demo-fake-token
-          config-path: .demo/blocking.json
-          api-base-url: ${{ steps.mock.outputs.api-base-url }}
-      - name: Non-blocking HTTP failure (expected successful step)
-        id: non-blocking
-        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
-        with:
-          api-token: demo-fake-token
-          config-path: .demo/non-blocking.json
-          api-base-url: ${{ steps.mock.outputs.api-base-url }}
-      - name: Missing second agent result (expected failed step)
-        id: incomplete
-        continue-on-error: true
-        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
-        with:
-          api-token: demo-fake-token
-          config-path: .demo/incomplete.json
-          api-base-url: ${{ steps.mock.outputs.api-base-url }}
-      - name: Check actual outcomes, reports, and test counts
-        if: always() && steps.mock.outcome == 'success'
-        run: node scripts/verify-demo.js
-        env:
-          DEMO_RESULTS: ${{ toJSON(steps) }}
-      - name: Downloadable JSON and JUnit reports
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: mock-synthetic-reports
-          path: |
-            ${{ steps.healthy.outputs.json-report }}
-            ${{ steps.healthy.outputs.junit-report }}
-            ${{ steps.blocking.outputs.json-report }}
-            ${{ steps.blocking.outputs.junit-report }}
-            ${{ steps.non-blocking.outputs.json-report }}
-            ${{ steps.non-blocking.outputs.junit-report }}
-            ${{ steps.incomplete.outputs.json-report }}
-            ${{ steps.incomplete.outputs.junit-report }}
-          if-no-files-found: warn
-          retention-days: 7
-      - name: Stop owned mock API
-        if: always()
-        run: node scripts/stop-mock.js
   live:
-    name: Live ThousandEyes HTTP and network checks
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'live'
+    name: Real ThousandEyes HTTP and TCP checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -124,20 +46,23 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - name: Check secret and generate live suite from validated inputs
+      - name: Validate suite generator
+        run: npm test
+      - name: Check secret and generate suite from validated inputs
         run: |
-          node -e "if (!process.env.TE_TOKEN) { console.error('Add the TE_TOKEN repository secret before running live mode.'); process.exit(1); }"
+          node -e "if (!process.env.TE_TOKEN) { console.error('Add the TE_TOKEN repository secret before running.'); process.exit(1); }"
           node scripts/create-live-suite.js
         env:
           TE_TOKEN: ${{ secrets.TE_TOKEN }}
-          DEMO_ACCOUNT_GROUP_ID: ${{ inputs.account-group-id }}
-          DEMO_AGENT_IDS: ${{ inputs.agent-ids }}
-          DEMO_TARGET_URL: ${{ inputs.target-url }}
-          DEMO_NETWORK_HOST: ${{ inputs.network-host }}
-          DEMO_NETWORK_PORT: ${{ inputs.network-port }}
+          DEMO_ACCOUNT_GROUP_ID: ${{ inputs.account-group-id || vars.TE_ACCOUNT_GROUP_ID }}
+          DEMO_AGENT_IDS: ${{ inputs.agent-ids || vars.TE_AGENT_IDS }}
+          DEMO_TARGET_URL: ${{ inputs.target-url || vars.TE_TARGET_URL }}
+          DEMO_EXPECTED_HTTP_STATUS: ${{ inputs.expected-http-status || vars.TE_EXPECTED_HTTP_STATUS || '200' }}
+          DEMO_NETWORK_HOST: ${{ inputs.network-host || vars.TE_NETWORK_HOST }}
+          DEMO_NETWORK_PORT: ${{ inputs.network-port || vars.TE_NETWORK_PORT || '443' }}
           DEMO_API_BASE_URL: ${{ inputs.api-base-url }}
           DEMO_SCENARIO: ${{ inputs.scenario }}
-      - name: Run live HTTP and TCP checks
+      - name: Run real HTTP and TCP checks
         id: synthetics
         uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@1d59d4d82e07e1015e553995a4ecd820938915f2
         with:
