@@ -1,0 +1,15 @@
+{
+  "name": "thousandeyes-synthetics-ci-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consumer demonstration of ThousandEyes synthetic CI checks",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "mock:start": "node scripts/start-mock.js",
+    "mock:stop": "node scripts/stop-mock.js",
+    "demo:verify": "node scripts/verify-demo.js",
+    "live:configure": "node scripts/create-live-suite.js"
+  }
+}

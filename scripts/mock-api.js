@@ -1,0 +1,82 @@
+'use strict';
+
+const http = require('node:http');
+const fs = require('node:fs');
+const tests = new Map();
+let nextId = 1000;
+let baseURL;
+
+function send(response, status, body) {
+  response.writeHead(status, { 'content-type': 'application/hal+json' });
+  response.end(JSON.stringify(body));
+}
+
+const server = http.createServer(async (request, response) => {
+  if (request.headers.authorization !== 'Bearer demo-fake-token') {
+    send(response, 401, { title: 'Fake CI token required' });
+    return;
+  }
+  const url = new URL(request.url, 'http://127.0.0.1');
+  if (url.searchParams.get('aid') !== '123456') {
+    send(response, 400, { title: 'Fake CI account group required' });
+    return;
+  }
+  const creation = /^\/v7\/tests\/(http-server|agent-to-server)\/instant$/.exec(url.pathname);
+  if (request.method === 'POST' && creation) {
+    let text = '';
+    try {
+      for await (const chunk of request) {
+        text += chunk;
+        if (text.length > 65536) throw new Error('Body limit');
+      }
+      const body = JSON.parse(text);
+      const type = creation[1];
+      if (type === 'agent-to-server' && (body.server !== 'healthy.invalid' || body.port !== 443)) {
+        send(response, 400, { title: 'Network creation requires a hostname and separate port' });
+        return;
+      }
+      if (!Array.isArray(body.agents) || body.agents.length === 0) throw new Error('Agents required');
+      const target = body.url || body.server;
+      if (typeof target !== 'string' || !target.includes('.invalid')) throw new Error('Only invalid fixture targets allowed');
+      const testId = String(++nextId);
+      const layer = type === 'agent-to-server' ? 'network' : 'http-server';
+      const record = { testId, type, layer, target, agents: body.agents };
+      tests.set(testId, record);
+      send(response, 201, {
+        testId, type,
+        agents: body.agents.map(({ agentId }) => ({ agentId, agentType: 'cloud' })),
+        _links: { testResults: [{ href: `${baseURL}/v7/test-results/${testId}/${layer}` }] }
+      });
+    } catch {
+      send(response, 400, { title: 'Invalid fixture request' });
+    }
+    return;
+  }
+  const measurement = /^\/v7\/test-results\/(\d+)\/(http-server|network)$/.exec(url.pathname);
+  if (request.method === 'GET' && measurement) {
+    const record = tests.get(measurement[1]);
+    if (!record || record.layer !== measurement[2]) {
+      send(response, 404, { title: 'Unknown fixture test' });
+      return;
+    }
+    const results = (record.target.includes('incomplete.invalid') ? record.agents.slice(0, 1) : record.agents).map(({ agentId }) => ({
+      agent: { agentId }, roundId: 1700000000,
+      ...(record.type === 'http-server'
+        ? { responseCode: record.target.includes('failure.invalid') ? 503 : 200, responseTime: 10, totalTime: 20 }
+        : { direction: 'to-target', loss: 0, avgLatency: 5, jitter: 1 })
+    }));
+    send(response, 200, { test: { testId: record.testId }, results, _links: {} });
+    return;
+  }
+  send(response, 404, { title: 'Unknown fixture endpoint' });
+});
+
+server.listen(0, '127.0.0.1', () => {
+  baseURL = `http://127.0.0.1:${server.address().port}`;
+  const temporary = process.env.MOCK_READY_FILE + '.tmp';
+  fs.writeFileSync(temporary, JSON.stringify({ baseURL, pid: process.pid }));
+  fs.renameSync(temporary, process.env.MOCK_READY_FILE);
+  console.log(`Local mock API ready at ${baseURL}`);
+});
+server.on('error', () => { console.error('Local mock API could not start'); process.exitCode = 1; });
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close(() => process.exit(0)));
