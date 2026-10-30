@@ -59,7 +59,12 @@ function createLiveSuite(env = process.env) {
   if (!API_ORIGINS.has(api.origin) || api.pathname !== '/' || rawAPI.includes('?') || rawAPI.includes('#') || api.username || api.password || /[\u0000-\u0020\u007f]/.test(rawAPI)) {
     throw new Error('DEMO_API_BASE_URL must select the production or STG ThousandEyes API without a path or credentials.');
   }
-  const expectedCode = scenario === 'healthy' ? 200 : 599;
+  const rawExpectedCode = value(env, 'DEMO_EXPECTED_HTTP_STATUS', '200');
+  if (!/^[1-5][0-9]{2}$/.test(rawExpectedCode)) {
+    throw new Error('DEMO_EXPECTED_HTTP_STATUS must be an HTTP status code from 100 to 599.');
+  }
+  const normalCode = Number(rawExpectedCode);
+  const expectedCode = scenario === 'healthy' ? normalCode : normalCode === 599 ? 598 : 599;
   const agents = ids.map((agentId) => ({ agentId }));
   return {
     apiBaseURL: api.origin,

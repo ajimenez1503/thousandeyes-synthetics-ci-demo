@@ -53,6 +53,18 @@ test('supports IPv6 targets without adding a port to the network server', () => 
   assert.equal(suite.tests[1].config.server, '2001:db8::1');
 });
 
+test('supports a deliberately unauthenticated API endpoint expecting 401', () => {
+  const { suite } = createLiveSuite({ ...valid, DEMO_EXPECTED_HTTP_STATUS: '401' });
+  assert.equal(suite.tests[0].config.desiredStatusCode, '401');
+  assert.deepEqual(suite.tests[0].thresholds.expectedResponseCodes, [401]);
+});
+
+test('intentional failure always differs from the configured normal status', () => {
+  const { suite } = createLiveSuite({ ...valid, DEMO_EXPECTED_HTTP_STATUS: '599', DEMO_SCENARIO: 'blocking-failure' });
+  assert.equal(suite.tests[0].config.desiredStatusCode, '598');
+  assert.deepEqual(suite.tests[0].thresholds.expectedResponseCodes, [598]);
+});
+
 const invalidInputs = [
   ['DEMO_ACCOUNT_GROUP_ID', ''], ['DEMO_ACCOUNT_GROUP_ID', '0'], ['DEMO_ACCOUNT_GROUP_ID', 'x'],
   ['DEMO_AGENT_IDS', ''], ['DEMO_AGENT_IDS', '0'], ['DEMO_AGENT_IDS', '6,6'],
@@ -63,6 +75,9 @@ const invalidInputs = [
   ['DEMO_NETWORK_HOST', 'example.com:443'], ['DEMO_NETWORK_HOST', 'https://example.com'],
   ['DEMO_NETWORK_HOST', '-bad.example'], ['DEMO_NETWORK_PORT', '0'], ['DEMO_NETWORK_PORT', '65536'],
   ['DEMO_NETWORK_PORT', '443.0'], ['DEMO_NETWORK_PORT', '1e3'], ['DEMO_SCENARIO', 'unknown'],
+  ['DEMO_EXPECTED_HTTP_STATUS', '99'], ['DEMO_EXPECTED_HTTP_STATUS', '600'],
+  ['DEMO_EXPECTED_HTTP_STATUS', '200.0'], ['DEMO_EXPECTED_HTTP_STATUS', '2e2'],
+  ['DEMO_EXPECTED_HTTP_STATUS', '200; echo unsafe'],
   ['DEMO_API_BASE_URL', 'https://external.invalid'], ['DEMO_API_BASE_URL', 'http://api.thousandeyes.com'],
   ['DEMO_API_BASE_URL', 'https://api.thousandeyes.com/v7'], ['DEMO_API_BASE_URL', 'https://api.thousandeyes.com?x=1'],
   ['DEMO_API_BASE_URL', 'https://api.thousandeyes.com?'], ['DEMO_API_BASE_URL', 'https://api.thousandeyes.com#'],
