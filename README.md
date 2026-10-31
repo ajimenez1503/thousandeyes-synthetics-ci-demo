@@ -42,7 +42,7 @@ The Action installs the pinned CLI automatically. The workflow preserves its exi
 
 The terminal, Jenkins, and GitLab examples require the `thousandeyes` executable on a Bash-compatible Linux/macOS host. GitLab's example assumes a provisioned Linux shell runner. If you use a container executor, its runner image must contain the CLI.
 
-Install the matching OS/architecture archive from the pinned [CLI `0.0.1-next` release](https://github.com/ajimenez1503/thousandeyes-cli/releases/tag/0.0.1-next), verify it against the release checksum manifest, and place the executable on `PATH`. The GitHub Action performs its own verified installation. Kubernetes uses a CLI image that you build and publish as described in [Kubernetes setup](examples/kubernetes/README.md).
+Install the matching OS/architecture archive from the pinned [CLI `0.0.2-next` release](https://github.com/ajimenez1503/thousandeyes-cli/releases/tag/0.0.2-next), verify it against the release checksum manifest, and place the executable on `PATH`. The GitHub Action performs its own verified installation. Kubernetes uses a CLI image that you build and publish as described in [Kubernetes setup](examples/kubernetes/README.md).
 
 ## Validation
 
