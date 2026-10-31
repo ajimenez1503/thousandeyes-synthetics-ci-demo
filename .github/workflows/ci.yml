@@ -13,7 +13,7 @@ jobs:
           persist-credentials: false
       - name: Run ThousandEyes checks
         id: synthetics
-        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@a3ebacc81bd344a890d8e653ae5d140e364c9cc9
+        uses: ajimenez1503/thousandeyes-synthetics-ci-github-action@4b82978533eb58d168be2a148f4bcf0290c0a652
         with:
           api-token: ${{ secrets.TE_TOKEN }}
           account-group-id: ${{ vars.TE_ACCOUNT_GROUP_ID }}
