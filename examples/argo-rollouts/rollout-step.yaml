@@ -5,4 +5,4 @@
       - templateName: thousandeyes-synthetics
     args:
       - name: image
-        value: your-registry/thousandeyes-cli:0.0.1-next
+        value: your-registry/thousandeyes-cli:0.0.2-next

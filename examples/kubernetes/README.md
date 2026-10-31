@@ -7,13 +7,13 @@ Argo CD and Argo Rollouts run the same CLI inside a Kubernetes Job. The image an
 There is no published CLI container assumed by these examples. Build the shared CLI's Dockerfile at its pinned source commit and push the image to a registry your cluster can access:
 
 ```sh
-export TE_CLI_IMAGE='your-registry/thousandeyes-cli:0.0.1-next'
+export TE_CLI_IMAGE='your-registry/thousandeyes-cli:0.0.2-next'
 docker build --platform linux/amd64 -t "$TE_CLI_IMAGE" \
-  'https://github.com/ajimenez1503/thousandeyes-cli.git#5448e6e99e2a662756619a7f7a2cf1af81f1b5e9'
+  'https://github.com/ajimenez1503/thousandeyes-cli.git#7f5b632baf734dd18eeb7ccd3c5cc3bcc4951caf'
 docker push "$TE_CLI_IMAGE"
 ```
 
-Use `linux/arm64` for arm64 nodes, or publish a multi-platform image. Replace `your-registry/thousandeyes-cli:0.0.1-next` in the Argo example with your image, preferably pinned by digest. Configure image-pull authentication if your registry requires it. The CLI reads the mounted suite directly and needs no shell or configuration-rendering tools.
+Use `linux/arm64` for arm64 nodes, or publish a multi-platform image. Replace `your-registry/thousandeyes-cli:0.0.2-next` in the Argo example with your image, preferably pinned by digest. Configure image-pull authentication if your registry requires it. The CLI reads the mounted suite directly and needs no shell or configuration-rendering tools.
 
 ## Prepare the suite and token
 
